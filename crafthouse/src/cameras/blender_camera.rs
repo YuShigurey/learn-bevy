@@ -1,8 +1,9 @@
-mod cameras;
+use bevy::prelude::*;
+use bevy::input::mouse::{MouseMotion, MouseWheel};
 
 /// Tags an entity as capable of panning and orbiting.
 #[derive(Component)]
-struct PanOrbitCamera {
+pub struct PanOrbitCamera {
     /// The "focus point" to orbit around. It is automatically updated when panning the camera
     pub focus: Vec3,
     pub radius: f32,
@@ -20,7 +21,7 @@ impl Default for PanOrbitCamera {
 }
 
 /// Pan the camera with middle mouse click, zoom with scroll wheel, orbit with right mouse click.
-fn pan_orbit_camera(
+pub fn pan_orbit_camera(
     windows: Res<Windows>,
     mut ev_motion: EventReader<MouseMotion>,
     mut ev_scroll: EventReader<MouseWheel>,
@@ -111,7 +112,7 @@ fn get_primary_window_size(windows: &Res<Windows>) -> Vec2 {
 }
 
 /// Spawn a camera like this
-fn spawn_camera(mut commands: Commands) {
+pub fn spawn_camera(mut commands: Commands) {
     let translation = Vec3::new(-2.0, 2.5, 5.0);
     let radius = translation.length();
 

@@ -1,13 +1,10 @@
 //! Shows how to create a 3D orthographic view (for isometric-look games or CAD applications).
 
-use std::cmp::max;
-use bevy::input::mouse::MouseMotion;
 use std::f32::consts::PI;
 use bevy::prelude::*;
-use bevy::render::camera::ScalingMode;
 use bevy::time::{FixedTimestep, FixedTimesteps};
 use bevy::window::CursorGrabMode;
-
+use crafthouse::cameras::blender_camera::{spawn_camera, pan_orbit_camera};
 
 const TIME_STEP: f32 = 1.0 / 60.0;
 
@@ -23,15 +20,15 @@ fn main() {
         .init_resource::<Game>()
         .add_plugins(DefaultPlugins)
         .add_state(GameState::Playing)
-        .add_startup_system(setup_cameras)
+        .add_startup_system(spawn_camera)
         .add_system_set(SystemSet::on_enter(GameState::Playing).with_system(setup))
         .add_system_set(
             SystemSet::on_update(GameState::Playing)
                 .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
-                .with_system(move_player)
-                .with_system(move_view_angle.after(move_player))
+                // .with_system(move_player)
+                .with_system(pan_orbit_camera.after(move_player))
         )
-        .add_system(cursor_grab_system)
+        // .add_system(cursor_grab_system)
         // .add_system_set(
         //     SystemSet::new()
         //         .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
@@ -70,7 +67,7 @@ fn cursor_grab_system(
 #[derive(Resource, Default)]
 struct Game {
     player: Player,
-    camera_should_focus: Vec2,
+    // camera_should_focus: Vec2,
     camera_is_focus: Vec2,
 }
 
@@ -82,52 +79,10 @@ struct Player {
     z: f32,
 }
 
-const RESET_FOCUS: [f32; 2] = [
-    PI,
-    0.
-];
-
-fn setup_cameras(
-    mut commands: Commands,
-    mut game: ResMut<Game>,
-) {
-    game.camera_should_focus = Vec2::from(RESET_FOCUS);
-    game.camera_is_focus = game.camera_should_focus;
-    game.player.x = 0.;
-    game.player.y = 1.;
-    game.player.z = 0.;
-
-    // camera
-    commands.spawn(Camera3dBundle {
-        // projection: OrthographicProjection {
-        //     scale: 3.0,
-        //     scaling_mode: ScalingMode::FixedVertical(2.0),
-        //     ..default()
-        // }
-        //     .into(),
-        // transform: Transform::from_xyz(5.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-        transform: Transform::from_xyz(game.player.x, game.player.y, game.player.z).looking_at(
-            Vec3::from_array([
-                game.player.x + game.camera_is_focus.x.cos(),
-                game.player.y + game.camera_is_focus.y.tan(),
-                game.player.z + game.camera_is_focus.x.sin(),
-            ]),
-            Vec3::Y),
-        ..default()
-    });
-
-
-    // commands.spawn(Camera3dBundle {
-    //     projection: OrthographicProjection {
-    //         scale: 3.0,
-    //         scaling_mode: ScalingMode::FixedVertical(2.0),
-    //         ..default()
-    //     }
-    //         .into(),
-    //     transform: Transform::from_xyz(5.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-    //     ..default()
-    // });
-}
+// const RESET_FOCUS: [f32; 2] = [
+//     PI,
+//     0.
+// ];
 
 /// set up a simple 3D scene
 fn setup(
@@ -157,7 +112,7 @@ fn setup(
     // plane
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Plane { size: 5.0 })),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+        material: materials.add(Color::rgba(0.3, 0.5, 0.3, 0.5).into()),
         ..default()
     });
 
@@ -200,7 +155,7 @@ fn setup(
     // cubes
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-        material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+        material: materials.add(Color::rgba(0.8, 0.7, 0.6, 0.1).into()),
         transform: Transform::from_xyz(1.5, 0.5, 1.5),
         ..default()
     });
@@ -273,65 +228,5 @@ fn move_player(
 
     for mut transform in view_transforms.p0().iter_mut() {
         *transform = transform.with_translation(Vec3::from_array([game.player.x,game.player.y,game.player.z]));
-    }
-}
-
-fn move_view_angle(
-    time: Res<Time>,
-    windows: ResMut<Windows>,
-    mut motion_evr: EventReader<MouseMotion>,
-    mut game: ResMut<Game>,
-    mut transforms: ParamSet<(Query<&mut Transform, With<Camera3d>>, Query<&Transform>)>,
-) {
-    const SPEED: f32 = 2.0;
-    let window = windows.get_primary().unwrap();
-    if window.cursor_grab_mode() != CursorGrabMode::Locked {
-        return
-    }
-
-    for (i, ev) in motion_evr.iter().enumerate() {
-        if i > 1 {
-            break
-        }
-        if let Some(player_entity) = game.player.entity {
-            // if let Ok(player_transform) = transforms.p1().get(player_entity) {
-            //     game.camera_should_focus = player_transform.translation;
-            // }
-
-            game.camera_should_focus = Vec2::from_array([
-                game.camera_should_focus.x + ev.delta.x * 0.02,
-                (PI / 2.0 - 0.01).min((-PI / 2.0 + 0.01).max(game.camera_should_focus.y - ev.delta.y * 0.02)),
-            ]);
-            // otherwise, target the middle
-        } else {
-            game.camera_should_focus = Vec2::from(RESET_FOCUS);
-        }
-    }
-    motion_evr.clear();
-
-    let mut camera_motion = game.camera_should_focus - game.camera_is_focus;
-    // if camera_motion.length() > 0.2 {
-    //     camera_motion *= SPEED * time.delta_seconds();
-    //     // set the new camera's actual focus
-    //     game.camera_is_focus += camera_motion;
-    // } else{
-    game.camera_is_focus += camera_motion;
-    // }
-
-    for mut transform in transforms.p0().iter_mut() {
-        // *transform = transform.looking_at(game.camera_is_focus, Vec3::Y);
-        // println!("{}", game.camera_is_focus);
-
-        let at = Vec3::from_array([
-            game.player.x + game.camera_is_focus.x.cos(),
-            game.player.y + game.camera_is_focus.y.tan(),
-            game.player.z + game.camera_is_focus.x.sin(),
-        ]);
-        // println!("{}", at);
-        *transform = transform.looking_at(
-            // game.camera_is_focus,
-            at,
-            Vec3::Y
-        );
     }
 }

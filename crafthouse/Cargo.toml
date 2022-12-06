@@ -1,10 +1,9 @@
 [package]
-name = "my_bevy_game"
+name = "crafthouse"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 bevy = "0.9.1"
 rand = "0.8.5"
@@ -22,3 +21,11 @@ opt-level = 3
 [[example]]
 name = "3dshooter"
 path = "examples/shooter.rs"
+
+[[example]]
+name = "shooterv1"
+path = "examples/shooter_new.rs"
+
+[[example]]
+name = "editorv0"
+path = "examples/editor.rs"
